@@ -53,9 +53,11 @@ class Php < Formula
     ENV.O3 # Speed things up
 
     args = [
-      "--prefix=#{prefix}",
       "--disable-debug",
-      "--with-config-file-path=#{etc}",
+      "--prefix=#{prefix}",
+      "--sysconfdir=#{etc}/php",
+      "--with-config-file-path=#{etc}/php",
+      "--localstatedir=#{HOMEBREW_PREFIX}/var",
       "--with-iconv-dir=/usr",
       "--enable-exif",
       "--enable-soap",
@@ -145,10 +147,20 @@ class Php < Formula
     system "make"
     system "make install"
 
-    system "cp ./php.ini-production #{etc}/php.ini" unless File.exists? "#{etc}/php.ini"
+    etc_php = (etc + "php")
+    if not etc_php.exist?
+      etc_php.mkdir
+    end
+
+    system "cp ./php.ini-production #{etc}/php/php.ini" unless File.exists? "#{etc}/php/php.ini"
+    if ARGV.include? '--with-fpm'
+        system "cp ./sapi/fpm/php-fpm.conf #{etc}/php/php-fpm.conf" unless File.exists? "#{etc}/php/php-fpm.conf"
+        (prefix+'org.php-fpm.plist').write startup_plist
+    end
   end
 
- def caveats; <<-EOS
+  def caveats
+    c = <<-EOS
 For 10.5 and Apache:
     Apache needs to run in 32-bit mode. You can either force Apache to start 
     in 32-bit mode or you can thin the Apache executable.
@@ -157,13 +169,51 @@ To enable PHP in Apache add the following to httpd.conf and restart Apache:
     LoadModule php5_module    #{prefix}/libexec/apache2/libphp5.so
 
 The php.ini file can be found in:
-    #{etc}/php.ini
+    #{etc}/php/php.ini
 
 'Fix' the default PEAR permissions and config:
     chmod -R ug+w #{prefix}/lib/php
-    pear config-set php_ini #{etc}/php.ini
-   EOS
- end
+    pear config-set php_ini #{etc}/php/php.ini
+    EOS
+
+    if ARGV.include? '--with-fpm'
+      c += <<-FPMCAVEATS
+
+You can start php-fpm automatically on login with:
+    cp #{prefix}/org.php-fpm.plist ~/Library/LaunchAgents
+    launchctl load -w ~/Library/LaunchAgents/org.php-fpm.plist
+      FPMCAVEATS
+    end
+
+    return c
+  end
+
+  def startup_plist
+    return <<-EOPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>org.php-fpm</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>UserName</key>
+    <string>#{`whoami`.chomp}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>#{sbin}/php-fpm</string>
+        <string>--fpm-config</string>
+        <string>#{etc}/php/php-fpm.conf</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>#{HOMEBREW_PREFIX}</string>
+  </dict>
+</plist>
+    EOPLIST
+  end
 end
 
 
@@ -188,3 +238,46 @@ diff -Naur php-5.3.2/ext/tidy/tidy.c php/ext/tidy/tidy.c
  #include "buffio.h"
  
  /* compatibility with older versions of libtidy */
+diff --git a/sapi/fpm/php-fpm.conf.in b/sapi/fpm/php-fpm.conf.in
+index 314b7e5..876e45e 100644
+--- a/sapi/fpm/php-fpm.conf.in
++++ b/sapi/fpm/php-fpm.conf.in
+@@ -22,7 +22,7 @@
+ ; Pid file
+ ; Note: the default prefix is @EXPANDED_LOCALSTATEDIR@
+ ; Default Value: none
+-;pid = run/php-fpm.pid
++pid = @EXPANDED_LOCALSTATEDIR@/run/php-fpm.pid
+ 
+ ; Error log file
+ ; Note: the default prefix is @EXPANDED_LOCALSTATEDIR@
+@@ -56,7 +56,7 @@
+ 
+ ; Send FPM to background. Set to 'no' to keep FPM in foreground for debugging.
+ ; Default Value: yes
+-;daemonize = yes
++daemonize = no
+ 
+ ;;;;;;;;;;;;;;;;;;;;
+ ; Pool Definitions ; 
+@@ -154,17 +154,17 @@ pm.max_children = 50
+ ; The number of child processes created on startup.
+ ; Note: Used only when pm is set to 'dynamic'
+ ; Default Value: min_spare_servers + (max_spare_servers - min_spare_servers) / 2
+-;pm.start_servers = 20
++pm.start_servers = 20
+ 
+ ; The desired minimum number of idle server processes.
+ ; Note: Used only when pm is set to 'dynamic'
+ ; Note: Mandatory when pm is set to 'dynamic'
+-;pm.min_spare_servers = 5
++pm.min_spare_servers = 5
+ 
+ ; The desired maximum number of idle server processes.
+ ; Note: Used only when pm is set to 'dynamic'
+ ; Note: Mandatory when pm is set to 'dynamic'
+-;pm.max_spare_servers = 35
++pm.max_spare_servers = 35
+  
+ ; The number of requests each child process should execute before respawning.
+ ; This can be useful to work around memory leaks in 3rd party libraries. For
