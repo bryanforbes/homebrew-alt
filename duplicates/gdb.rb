@@ -1,9 +1,9 @@
 require 'formula'
 
 class Gdb < Formula
-  url 'http://ftp.gnu.org/gnu/gdb/gdb-7.2.tar.bz2'
+  url 'http://ftp.gnu.org/gnu/gdb/gdb-7.3.1.tar.bz2'
   homepage 'http://www.gnu.org/software/gdb/'
-  md5 '64260e6c56979ee750a01055f16091a5'
+  md5 'b89a5fac359c618dda97b88645ceab47'
 
   def install
     args = ["--prefix=#{prefix}",

@@ -5,10 +5,10 @@ def mysql_installed?
 end
 
 class Php < Formula
-  url 'http://www.php.net/get/php-5.3.6.tar.gz/from/this/mirror'
+  url 'http://www.php.net/get/php-5.3.8.tar.gz/from/this/mirror'
   homepage 'http://php.net/'
-  md5 '88a2b00047bc53afbbbdf10ebe28a57e'
-  version '5.3.6'
+  md5 'f4ce40d5d156ca66a996dbb8a0e7666a'
+  version '5.3.8'
 
   # So PHP extensions don't report missing symbols
   skip_clean ['bin', 'sbin']
@@ -57,8 +57,11 @@ class Php < Formula
       "--prefix=#{prefix}",
       "--sysconfdir=#{etc}/php",
       "--with-config-file-path=#{etc}/php",
+      "--with-config-file-scan-dir=#{etc}/php/conf.d",
       "--localstatedir=#{HOMEBREW_PREFIX}/var",
       "--with-iconv-dir=/usr",
+      "--enable-dba",
+      "--enable-ndbm=/usr",
       "--enable-exif",
       "--enable-soap",
       "--enable-sqlite-utf8",
@@ -72,6 +75,8 @@ class Php < Formula
       "--enable-sysvshm",
       "--enable-sysvmsg",
       "--enable-mbstring",
+      "--enable-mbregex",
+      "--enable-zend-multibyte",
       "--enable-bcmath",
       "--enable-calendar",
       "--with-openssl=/usr",
@@ -87,10 +92,12 @@ class Php < Formula
       "--with-curl=/usr",
       "--with-gd",
       "--enable-gd-native-ttf",
+      "--with-freetype-dir=/usr/X11",
       "--with-mcrypt=#{Formula.factory('mcrypt').prefix}",
       "--with-jpeg-dir=#{Formula.factory('jpeg').prefix}",
       "--with-png-dir=/usr/X11",
       "--with-gettext=#{Formula.factory('gettext').prefix}",
+      "--with-snmp=/usr",
       "--with-tidy",
       "--mandir=#{man}"
     ]
@@ -152,9 +159,9 @@ class Php < Formula
       etc_php.mkdir
     end
 
-    system "cp ./php.ini-production #{etc}/php/php.ini" unless File.exists? "#{etc}/php/php.ini"
+    etc_php.install "./php.ini-production" => "php.ini" unless File.exists? etc_php+"php.ini"
     if ARGV.include? '--with-fpm'
-        system "cp ./sapi/fpm/php-fpm.conf #{etc}/php/php-fpm.conf" unless File.exists? "#{etc}/php/php-fpm.conf"
+        system "cp ./sapi/fpm/php-fpm.conf #{etc_php}/php-fpm.conf" unless File.exists? "#{etc_php}/php-fpm.conf"
         (prefix+'org.php-fpm.plist').write startup_plist
     end
   end

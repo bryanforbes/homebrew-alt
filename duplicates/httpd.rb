@@ -1,9 +1,11 @@
 require 'formula'
 
 class Httpd < Formula
-  url 'http://www.bizdirusa.com/mirrors/apache/httpd/httpd-2.2.16.tar.gz'
+  url 'http://mirrors.ibiblio.org/pub/mirrors/apache/httpd/httpd-2.2.21.tar.bz2'
   homepage 'http://httpd.apache.org/'
-  md5 '7f33f2c8b213ad758c009ae46d2795ed'
+  sha1 'c02f9b05da9a7e316ff37d9053dc76a57ba51cb4'
+
+  skip_clean :all
 
   def install
     system "./configure", "--disable-debug", "--disable-dependency-tracking",
