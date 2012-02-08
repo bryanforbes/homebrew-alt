@@ -8,6 +8,8 @@ require 'formula'
 # This should be fixed in GCC 4.6.1:
 #   http://lists.macosforge.org/pipermail/macports-dev/2011-March/014278.html
 #
+# (LTO doesn't seem to be fixed even in 4.6.2)
+#
 # GCC 4.6.0 adds the gccgo compiler for the Go language. However, gccgo "is
 # currently known to work on GNU/Linux and RTEMS. Solaris support is in
 # progress. It may or may not work on other platforms."
@@ -55,8 +57,8 @@ end
 
 class Gcc < Formula
   homepage 'http://gcc.gnu.org'
-  url 'ftp://ftp.gnu.org/gnu/gcc/gcc-4.6.0/gcc-4.6.0.tar.bz2'
-  md5 '93d1c436bf991564524701259b6285a2'
+  url 'http://ftpmirror.gnu.org/gcc/gcc-4.6.2/gcc-4.6.2.tar.bz2'
+  md5 '028115c4fbfb6cfd75d6369f4a90d87e'
 
   depends_on 'gmp'
   depends_on 'libmpc'
@@ -79,12 +81,22 @@ class Gcc < Formula
   skip_clean :all
 
   def install
-    gmp = Formula.factory 'gmp'
-    mpfr = Formula.factory 'mpfr'
-    libmpc = Formula.factory 'libmpc'
+    # Force 64-bit on systems that use it. Build failures reported for some
+    # systems when this is not done.
+    ENV.m64 if MacOS.prefer_64_bit?
 
     # GCC will suffer build errors if forced to use a particular linker.
     ENV.delete 'LD'
+
+    # This is required on systems running a version newer than 10.6, and
+    # it's probably a good idea regardless.
+    #
+    # https://trac.macports.org/ticket/27237
+    ENV.append 'CXXFLAGS', '-U_GLIBCXX_DEBUG -U_GLIBCXX_DEBUG_PEDANTIC'
+
+    gmp = Formula.factory 'gmp'
+    mpfr = Formula.factory 'mpfr'
+    libmpc = Formula.factory 'libmpc'
 
     # Sandbox the GCC lib, libexec and include directories so they don't wander
     # around telling small children there is no Santa Claus. This results in a
@@ -108,7 +120,8 @@ class Gcc < Formula
       "--with-system-zlib",
       "--enable-stage1-checking",
       "--enable-plugin",
-      "--disable-lto" # Change to enable when 4.6.1 is released
+      "--disable-lto",
+      "--disable-multilib"
     ]
 
     args << '--disable-nls' unless nls?

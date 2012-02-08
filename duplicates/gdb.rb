@@ -1,7 +1,7 @@
 require 'formula'
 
 class Gdb < Formula
-  url 'http://ftp.gnu.org/gnu/gdb/gdb-7.3.1.tar.bz2'
+  url 'http://ftpmirror.gnu.org/gdb/gdb-7.3.1.tar.bz2'
   homepage 'http://www.gnu.org/software/gdb/'
   md5 'b89a5fac359c618dda97b88645ceab47'
 
@@ -17,11 +17,10 @@ class Gdb < Formula
   end
 
   def caveats; <<-EOS.undent
-    In order to make this build of gdb useful, you may have to code sign
-    the binary. In order to do this, you must create a certificate in your
-    System keychain. For more information, see:
+    gdb requires special privileges to access Mach ports.
+    You will need to codesign the binary. For instructions, see:
 
-    http://sourceware.org/gdb/wiki/BuildingOnDarwin
+      http://sourceware.org/gdb/wiki/BuildingOnDarwin
     EOS
   end
 end
