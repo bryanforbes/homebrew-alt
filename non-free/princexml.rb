@@ -1,10 +1,10 @@
 require 'formula'
 
 class Princexml < Formula
-  url 'http://www.princexml.com/download/prince-7.1-macosx.tar.gz'
+  url 'http://www.princexml.com/download/prince-8.0-macosx.tar.gz'
   homepage 'http://www.princexml.com'
-  md5 'dc239a14b7dbe4e9ff7cb05e7c9d29d2'
-  version '7.1'
+  md5 '0d17a2e9c82277ed5d039444ebf9cecd'
+  version '8.0'
 
   def patches
     # Drop the user input since we're providing the prefix
@@ -18,10 +18,10 @@ end
 
 
 __END__
---- prince-7.1-macosx.orig/install.sh	2010-11-18 16:37:36.000000000 -0800
-+++ prince-7.1-macosx/install.sh	2010-11-18 16:38:13.000000000 -0800
+--- prince-8.0-macosx.orig/install.sh	2011-06-30 19:16:13.000000000 -0600
++++ prince-8.0-macosx/install.sh	2012-02-13 13:36:07.000000000 -0700
 @@ -5,24 +5,10 @@
- VERSION="7.1"
+ VERSION="8.0"
  WEBSITE="http://www.princexml.com"
  
 -prefix=/usr/local
