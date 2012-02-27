@@ -72,7 +72,9 @@ class Php < Formula
     args = [
       "--prefix=#{prefix}",
       "--disable-debug",
-      "--with-config-file-path=#{etc}",
+      "--localstatedir=#{var}",
+      "--sysconfdir=#{etc}/php5",
+      "--with-config-file-path=#{etc}/php5",
       "--with-config-file-scan-dir=#{etc}/php5/conf.d",
       "--with-iconv-dir=/usr",
       "--enable-dba",
@@ -176,12 +178,25 @@ class Php < Formula
     ENV.deparallelize # parallel install fails on some systems
     system "make install"
 
-    etc.install "./php.ini-production" => "php.ini" unless File.exists? etc+"php.ini"
+    etc_php = (etc + "php5")
+    if not etc_php.exist?
+      etc_php.mkdir
+    end
+
+    php_ini = etc_php + "php.ini"
+    etc_php.install "./php.ini-production" => "php.ini" + ((File.exists? php_ini) ? ".#{version}" : "")
+
+    if ARGV.include? '--with-fpm'
+      fpm_conf = etc_php + "php-fpm.conf"
+      system "cp ./sapi/fpm/php-fpm.conf #{fpm_conf}" + ((File.exists? fpm_conf) ? ".#{version}" : "")
+      (prefix+'org.php-fpm.plist').write startup_plist
+    end
     chmod_R 0775, lib+"php"
-    system bin+"pear", "config-set", "php_ini", etc+"php.ini"
+    system bin+"pear", "config-set", "php_ini", php_ini
   end
 
- def caveats; <<-EOS
+  def caveats
+    c = <<-EOS
 For 10.5 and Apache:
     Apache needs to run in 32-bit mode. You can either force Apache to start
     in 32-bit mode or you can thin the Apache executable.
@@ -190,9 +205,47 @@ To enable PHP in Apache add the following to httpd.conf and restart Apache:
     LoadModule php5_module    #{libexec}/apache2/libphp5.so
 
 The php.ini file can be found in:
-    #{etc}/php.ini
-   EOS
- end
+    #{etc}/php5/php.ini
+    EOS
+
+    if ARGV.include? '--with-fpm'
+      c += <<-FPMCAVEATS
+
+You can start php-fpm automatically on login with:
+    cp #{prefix}/org.php-fpm.plist ~/Library/LaunchAgents
+    launchctl load -w ~/Library/LaunchAgents/org.php-fpm.plist
+      FPMCAVEATS
+    end
+
+    return c
+  end
+
+  def startup_plist
+    return <<-EOPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>org.php-fpm</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>UserName</key>
+    <string>#{`whoami`.chomp}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>#{sbin}/php-fpm</string>
+        <string>--fpm-config</string>
+        <string>#{etc}/php5/php-fpm.conf</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>#{HOMEBREW_PREFIX}</string>
+  </dict>
+</plist>
+    EOPLIST
+  end
 end
 
 
@@ -228,3 +281,42 @@ diff -Naur php-5.3.2/ext/tidy/tidy.c php/ext/tidy/tidy.c
  typedef float           DBFLT4;
  #else
  #define MSSQL_VERSION "7.0"
+diff --git a/sapi/fpm/php-fpm.conf.in b/sapi/fpm/php-fpm.conf.in
+index 4e7952b..8a80748 100644
+--- a/sapi/fpm/php-fpm.conf.in
++++ b/sapi/fpm/php-fpm.conf.in
+@@ -12,7 +12,7 @@
+ ; Relative path can also be used. They will be prefixed by:
+ ;  - the global prefix if it's been set (-p arguement)
+ ;  - @prefix@ otherwise
+-;include=etc/fpm.d/*.conf
++;include=etc/php5/fpm.d/*.conf
+ 
+ ;;;;;;;;;;;;;;;;;;
+ ; Global Options ;
+@@ -22,14 +22,14 @@
+ ; Pid file
+ ; Note: the default prefix is @EXPANDED_LOCALSTATEDIR@
+ ; Default Value: none
+-;pid = run/php-fpm.pid
++pid = @EXPANDED_LOCALSTATEDIR@/run/php-fpm.pid
+ 
+ ; Error log file
+ ; If it's set to "syslog", log is sent to syslogd instead of being written
+ ; in a local file.
+ ; Note: the default prefix is @EXPANDED_LOCALSTATEDIR@
+ ; Default Value: log/php-fpm.log
+-;error_log = log/php-fpm.log
++;error_log = @EXPANDED_LOCALSTATEDIR@/log/php-fpm.log
+ 
+ ; syslog_facility is used to specify what type of program is logging the
+ ; message. This lets syslogd specify that messages from different facilities
+@@ -78,7 +78,7 @@
+ 
+ ; Send FPM to background. Set to 'no' to keep FPM in foreground for debugging.
+ ; Default Value: yes
+-;daemonize = yes
++daemonize = no
+  
+ ; Set open file descriptor rlimit for the master process.
+ ; Default Value: system defined value
